@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/*
+  Design tokens — "night sky" system.
+  Dark-mode-first: this app has one mode, tuned for late-night, intimate use.
+  Named tokens (not raw hex scattered through components) so the palette
+  can be tuned in one place as the product grows.
+*/
+:root {
+  --color-night-base: #0b0e1a;      /* deep night indigo — base background */
+  --color-night-surface: #131829;   /* elevated surface — cards, panels */
+  --color-night-surface-hi: #1a2036; /* hover / active surface */
+  --color-night-border: #232a42;    /* hairline borders on dark surfaces */
+
+  --color-gold: #e8b86d;            /* candlelight gold — primary accent */
+  --color-gold-soft: #e8b86d33;     /* gold at low opacity, for glows */
+  --color-rose: #d88b9a;            /* dusty rose — secondary warmth, used sparingly */
+
+  --color-text-primary: #f5f1e8;    /* warm parchment white */
+  --color-text-muted: #8b8fa3;      /* muted slate — timestamps, captions */
+  --color-text-faint: #545b74;      /* lowest-emphasis text */
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+}
+
+@theme inline {
+  --color-background: var(--color-night-base);
+  --color-foreground: var(--color-text-primary);
+
+  --color-surface: var(--color-night-surface);
+  --color-surface-hi: var(--color-night-surface-hi);
+  --color-border: var(--color-night-border);
+
+  --color-accent-gold: var(--color-gold);
+  --color-accent-gold-soft: var(--color-gold-soft);
+  --color-accent-rose: var(--color-rose);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+}
+
+* {
+  border-color: var(--color-night-border);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-night-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Respect reduced-motion preferences everywhere, per accessibility standard */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Subtle star twinkle, used sparingly on the constellation view */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.animate-twinkle {
+  animation: twinkle 4s ease-in-out infinite;
+}
