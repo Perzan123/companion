@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { mapRowToMemory } from "@/lib/supabase/mappers";
 import { buildSystemPrompt } from "@/lib/ai/systemPrompt";
-import { sendMessageToClaude } from "@/lib/ai/claude";
+import { sendMessageToGemini } from "@/lib/ai/gemini";
 import { chatRequestSchema } from "@/lib/validation/schemas";
 import type { ChatMessage, CompanionProfile } from "@/lib/types/memory";
 
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(profile, memories);
 
-    const reply = await sendMessageToClaude({
+    const reply = await sendMessageToGemini({
       systemPrompt,
       history,
       newMessage: parsedBody.message,
