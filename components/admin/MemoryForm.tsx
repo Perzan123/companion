@@ -12,6 +12,7 @@ const TYPE_OPTIONS: { value: MemoryType; label: string; needsFile: boolean }[] =
   { value: "story", label: "Story", needsFile: false },
   { value: "milestone", label: "Milestone", needsFile: false },
   { value: "inside_joke", label: "Inside joke", needsFile: false },
+  { value: "catch_phrase", label: "Catch phrase", needsFile: false },
   { value: "song", label: "Meaningful song", needsFile: false },
   { value: "future_plan", label: "Future plan", needsFile: false },
   { value: "photo", label: "Photo", needsFile: true },
@@ -133,20 +134,28 @@ export function MemoryForm({ onSubmit }: MemoryFormProps) {
         </Select>
       </Field>
 
-      <Field label="Title">
+      <Field label={type === "catch_phrase" ? "Phrase" : "Title"}>
         <TextInput
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. The night we got caught in the rain"
+          placeholder={
+            type === "catch_phrase"
+              ? "e.g. hell no"
+              : "e.g. The night we got caught in the rain"
+          }
         />
       </Field>
 
-      <Field label="Description">
+      <Field label={type === "catch_phrase" ? "What it means / when it's used" : "Description"}>
         <Textarea
           rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Tell the story, or add whatever context matters"
+          placeholder={
+            type === "catch_phrase"
+              ? "e.g. said sarcastically when teasing, means the opposite of what it sounds like"
+              : "Tell the story, or add whatever context matters"
+          }
         />
       </Field>
 

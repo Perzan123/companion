@@ -34,6 +34,12 @@ export const insideJokeMemorySchema = z.object({
   metadata: z.object({}).default({}),
 });
 
+export const catchPhraseMemorySchema = z.object({
+  type: z.literal("catch_phrase"),
+  ...baseMemoryFields,
+  metadata: z.object({}).default({}),
+});
+
 export const songMemorySchema = z.object({
   type: z.literal("song"),
   ...baseMemoryFields,
@@ -89,6 +95,7 @@ export const memoryInputSchema = z.discriminatedUnion("type", [
   storyMemorySchema,
   milestoneMemorySchema,
   insideJokeMemorySchema,
+  catchPhraseMemorySchema,
   songMemorySchema,
   futurePlanMemorySchema,
   photoMemorySchema,

@@ -9,6 +9,7 @@ const TYPE_LABELS: Record<Memory["type"], string> = {
   story: "Story",
   milestone: "Milestone",
   inside_joke: "Inside joke",
+  catch_phrase: "Catch phrase",
   song: "Song",
   future_plan: "Future plan",
   photo: "Photo",

@@ -13,6 +13,7 @@ export type MemoryType =
   | "story"
   | "milestone"
   | "inside_joke"
+  | "catch_phrase"
   | "song"
   | "future_plan"
   | "photo"
@@ -46,6 +47,11 @@ export interface MilestoneMemory extends MemoryBase {
 
 export interface InsideJokeMemory extends MemoryBase {
   type: "inside_joke";
+  metadata: Record<string, never>;
+}
+
+export interface CatchPhraseMemory extends MemoryBase {
+  type: "catch_phrase";
   metadata: Record<string, never>;
 }
 
@@ -89,6 +95,7 @@ export type Memory =
   | StoryMemory
   | MilestoneMemory
   | InsideJokeMemory
+  | CatchPhraseMemory
   | SongMemory
   | FuturePlanMemory
   | PhotoMemory

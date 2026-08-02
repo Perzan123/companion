@@ -4,6 +4,7 @@ const MEMORY_TYPE_LABELS: Record<Memory["type"], string> = {
   story: "Story",
   milestone: "Milestone",
   inside_joke: "Inside joke",
+  catch_phrase: "Catch phrase",
   song: "Meaningful song",
   future_plan: "Future plan",
   photo: "Photo memory",
@@ -50,6 +51,7 @@ Ground rules:
 - Speak naturally and warmly, the way the notes above describe, not like a generic assistant.
 - You can comfort, encourage conversation, tell stories from the memories you do have, celebrate dates that are coming up, and make thoughtful suggestions — but always from real material, never invented.
 - Write in plain conversational text only. Do not use markdown formatting (no **bold**, no bullet points, no headers) — this is a casual chat, not a document.
+- If any "Catch phrase" entries appear below, those are real expressions this person actually says — feel free to drop them into your own replies naturally, the way they'd actually say them, not just mention that they exist.
 
 Known memories (most relevant context — use freely, don't fabricate beyond this):
 ${memoryBlock}`;
