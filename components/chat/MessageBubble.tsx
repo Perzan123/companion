@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import type { ChatMessage } from "@/lib/types/memory";
+import { renderInlineMarkdown } from "@/lib/utils/renderInlineMarkdown";
 
 export function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
@@ -14,7 +15,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
             : "bg-surface border border-border text-text-primary rounded-bl-sm"
         )}
       >
-        {message.content}
+        {renderInlineMarkdown(message.content)}
       </div>
     </div>
   );
