@@ -38,6 +38,26 @@ export async function GET() {
   }
 }
 
+export async function DELETE() {
+  try {
+    const supabase = createServerSupabaseClient();
+    const { error } = await supabase
+      .from("chat_messages")
+      .delete()
+      .not("id", "is", null); // delete all rows
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to clear chat history:", error);
+    return NextResponse.json(
+      { error: "Couldn't clear chat history." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   let parsedBody;
   try {
