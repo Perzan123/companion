@@ -6,6 +6,10 @@ import { sendMessageToGemini } from "@/lib/ai/gemini";
 import { chatRequestSchema } from "@/lib/validation/schemas";
 import type { ChatMessage, CompanionProfile } from "@/lib/types/memory";
 
+// Default serverless timeout (10s) can be too tight once the memory set
+// grows large enough to slow down generation. 30s gives real headroom.
+export const maxDuration = 30;
+
 const HISTORY_LIMIT = 20;
 
 export async function GET() {

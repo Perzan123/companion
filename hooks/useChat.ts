@@ -64,10 +64,23 @@ export function useChat(): UseChatResult {
         body: JSON.stringify({ message: trimmed }),
       });
 
-      const data = await response.json();
+      let data: { reply?: string; error?: string };
+      try {
+        data = await response.json();
+      } catch {
+        // The platform (not our route handler) returned a non-JSON error page —
+        // most often a timeout. Give a clear, honest message instead of a parse error.
+        throw new Error(
+          "The companion took too long to respond. Please try again."
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.error ?? "Something went wrong.");
+      }
+
+      if (!data.reply) {
+        throw new Error("The companion didn't send a reply. Please try again.");
       }
 
       const assistantMessage: ChatMessage = {
