@@ -15,6 +15,10 @@ interface SendMessageParams {
  * route handler and system-prompt logic didn't need to change at all —
  * only this file and its single import site.
  */
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function sendMessageToGemini({
   systemPrompt,
   history,
@@ -34,29 +38,42 @@ export async function sendMessageToGemini({
     { role: "user", parts: [{ text: newMessage }] },
   ];
 
-  const response = await fetch(GEMINI_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents,
-    }),
+  const body = JSON.stringify({
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents,
   });
 
-  if (!response.ok) {
+  // Gemini's free tier occasionally returns 503 "high demand" errors that
+  // clear up within seconds. A couple of quick retries smooths over most
+  // of these transient blips without the user ever seeing an error.
+  const MAX_ATTEMPTS = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("Gemini API returned no text content");
+      return text as string;
+    }
+
     const errorText = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errorText}`);
+    lastError = new Error(`Gemini API error (${response.status}): ${errorText}`);
+
+    const isRetryable = response.status === 503 || response.status === 429;
+    if (!isRetryable || attempt === MAX_ATTEMPTS) break;
+
+    await sleep(attempt * 1000); // 1s, then 2s
   }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("Gemini API returned no text content");
-  }
-
-  return text as string;
+  throw lastError;
 }
