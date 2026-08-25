@@ -8,9 +8,9 @@ import type { ChatMessage, CompanionProfile } from "@/lib/types/memory";
 
 // Default serverless timeout (10s) can be too tight once the memory set
 // grows large enough to slow down generation. 30s gives real headroom.
-export const maxDuration = 30;
+export const maxDuration = 60;
 
-const HISTORY_LIMIT = 20;
+const HISTORY_LIMIT = 10;
 
 export async function GET() {
   try {

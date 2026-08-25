@@ -12,10 +12,16 @@ const MEMORY_TYPE_LABELS: Record<Memory["type"], string> = {
   video: "Video memory",
 };
 
+const MAX_DESCRIPTION_CHARS = 240;
+
 function formatMemory(memory: Memory): string {
   const date = memory.occurredOn ? ` (${memory.occurredOn})` : "";
   const label = MEMORY_TYPE_LABELS[memory.type];
-  const description = memory.description ? `\n  ${memory.description}` : "";
+  const truncatedDescription =
+    memory.description && memory.description.length > MAX_DESCRIPTION_CHARS
+      ? `${memory.description.slice(0, MAX_DESCRIPTION_CHARS)}…`
+      : memory.description;
+  const description = truncatedDescription ? `\n  ${truncatedDescription}` : "";
   return `- [${label}] ${memory.title}${date}${description}`;
 }
 
