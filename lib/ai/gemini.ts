@@ -1,7 +1,7 @@
 import type { ChatMessage } from "@/lib/types/memory";
 
-const PRIMARY_MODEL = "gemini-flash-latest";
-const FALLBACK_MODEL = "gemini-flash-lite-latest";
+const FAST_MODEL = "gemini-flash-lite-latest";
+const FULLER_MODEL = "gemini-flash-latest";
 
 function apiUrlFor(model: string) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -59,11 +59,11 @@ async function callGemini(
 }
 
 /**
- * Tries the primary model twice (covers a single transient overload/hang),
- * then falls back to a different model entirely. A same-model retry doesn't
- * help much if the model itself is having a sustained bad moment — a
- * different model has independent capacity, so it's a real second chance
- * rather than just hoping the same problem clears up.
+ * Tries the fast/lite model first (currently the more reliably available
+ * one), retries it once, then escalates to the fuller model as a last
+ * resort. Prioritizes response reliability and speed over the fuller
+ * model's slightly richer output — the right trade-off for a casual
+ * companion chat rather than complex reasoning.
  */
 export async function sendMessageToGemini({
   systemPrompt,
@@ -90,9 +90,9 @@ export async function sendMessageToGemini({
   });
 
   const attempts: { model: string; timeoutMs: number }[] = [
-    { model: PRIMARY_MODEL, timeoutMs: 15_000 },
-    { model: PRIMARY_MODEL, timeoutMs: 15_000 },
-    { model: FALLBACK_MODEL, timeoutMs: 15_000 },
+    { model: FAST_MODEL, timeoutMs: 15_000 },
+    { model: FAST_MODEL, timeoutMs: 15_000 },
+    { model: FULLER_MODEL, timeoutMs: 15_000 },
   ];
 
   let lastError: Error = new Error("Unknown Gemini failure");
