@@ -13,6 +13,7 @@ const MEMORY_TYPE_LABELS: Record<Memory["type"], string> = {
 };
 
 const MAX_DESCRIPTION_CHARS = 240;
+const MAX_MEMORIES_IN_PROMPT = 60;
 
 function formatMemory(memory: Memory): string {
   const date = memory.occurredOn ? ` (${memory.occurredOn})` : "";
@@ -23,6 +24,25 @@ function formatMemory(memory: Memory): string {
       : memory.description;
   const description = truncatedDescription ? `\n  ${truncatedDescription}` : "";
   return `- [${label}] ${memory.title}${date}${description}`;
+}
+
+/**
+ * Keeps the prompt size — and therefore response speed — roughly constant
+ * even as the memory collection grows over years. Favorites are always
+ * included (they're the ones actively curated as most meaningful); the rest
+ * fill remaining slots by recency. Memories beyond the cap are simply not
+ * in a given response's working context, not deleted or hidden anywhere.
+ */
+function selectMemoriesForPrompt(memories: Memory[]): Memory[] {
+  if (memories.length <= MAX_MEMORIES_IN_PROMPT) return memories;
+
+  const favorites = memories.filter((m) => m.isFavorite);
+  const rest = memories
+    .filter((m) => !m.isFavorite)
+    .sort((a, b) => (b.occurredOn ?? "").localeCompare(a.occurredOn ?? ""));
+
+  const remainingSlots = Math.max(MAX_MEMORIES_IN_PROMPT - favorites.length, 0);
+  return [...favorites, ...rest.slice(0, remainingSlots)];
 }
 
 /**
@@ -38,9 +58,10 @@ export function buildSystemPrompt(
   profile: CompanionProfile,
   memories: Memory[]
 ): string {
+  const selectedMemories = selectMemoriesForPrompt(memories);
   const memoryBlock =
-    memories.length > 0
-      ? memories.map(formatMemory).join("\n")
+    selectedMemories.length > 0
+      ? selectedMemories.map(formatMemory).join("\n")
       : "(No memories have been added yet.)";
 
   const forName = profile.builtForName ?? "the person you're speaking with";

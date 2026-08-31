@@ -41,6 +41,7 @@ export async function sendMessageToGemini({
   const body = JSON.stringify({
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents,
+    generationConfig: { maxOutputTokens: 500 },
   });
 
   // Gemini's free tier occasionally returns 503 "high demand" errors that
