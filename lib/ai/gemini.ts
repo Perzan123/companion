@@ -48,17 +48,39 @@ export async function sendMessageToGemini({
   // clear up within seconds. A couple of quick retries smooths over most
   // of these transient blips without the user ever seeing an error.
   const MAX_ATTEMPTS = 3;
+  const PER_ATTEMPT_TIMEOUT_MS = 20_000;
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const response = await fetch(GEMINI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PER_ATTEMPT_TIMEOUT_MS);
+    const attemptStart = Date.now();
+
+    let response: Response;
+    try {
+      response = await fetch(GEMINI_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const elapsed = Date.now() - attemptStart;
+      lastError =
+        err instanceof Error && err.name === "AbortError"
+          ? new Error(`Gemini request timed out after ${elapsed}ms (attempt ${attempt})`)
+          : new Error(`Gemini fetch failed after ${elapsed}ms: ${err}`);
+      console.log(`[gemini] Attempt ${attempt} failed: ${lastError.message}`);
+      if (attempt === MAX_ATTEMPTS) break;
+      await sleep(attempt * 1000);
+      continue;
+    }
+    clearTimeout(timeoutId);
+    console.log(`[gemini] Attempt ${attempt} responded in ${Date.now() - attemptStart}ms with status ${response.status}`);
 
     if (response.ok) {
       const data = await response.json();

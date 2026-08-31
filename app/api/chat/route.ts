@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const startTime = Date.now();
     const supabase = createServerSupabaseClient();
 
     const [{ data: profileRow }, { data: memoryRows }, { data: historyRows }] =
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
           .order("created_at", { ascending: false })
           .limit(HISTORY_LIMIT),
       ]);
+    console.log(`[chat] Supabase reads took ${Date.now() - startTime}ms`);
 
     const profile: CompanionProfile = {
       companionName: profileRow?.companion_name ?? "Companion",
@@ -109,12 +111,15 @@ export async function POST(request: NextRequest) {
       }));
 
     const systemPrompt = buildSystemPrompt(profile, memories);
+    console.log(`[chat] System prompt length: ${systemPrompt.length} chars, ${memories.length} memories total`);
 
+    const geminiStart = Date.now();
     const reply = await sendMessageToGemini({
       systemPrompt,
       history,
       newMessage: parsedBody.message,
     });
+    console.log(`[chat] Gemini call took ${Date.now() - geminiStart}ms`);
 
     // Persist both sides of the exchange. Best-effort: if this fails, the
     // user still gets their reply — we don't want a logging failure to
