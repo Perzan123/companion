@@ -1,7 +1,11 @@
 import type { ChatMessage } from "@/lib/types/memory";
 
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+const PRIMARY_MODEL = "gemini-flash-latest";
+const FALLBACK_MODEL = "gemini-flash-lite-latest";
+
+function apiUrlFor(model: string) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
 
 interface SendMessageParams {
   systemPrompt: string;
@@ -9,16 +13,58 @@ interface SendMessageParams {
   newMessage: string;
 }
 
-/**
- * Sends a message to Gemini's free-tier API. Kept behind the same function
- * signature as the Claude wrapper it replaces (lib/ai/claude.ts), so the
- * route handler and system-prompt logic didn't need to change at all —
- * only this file and its single import site.
- */
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function callGemini(
+  model: string,
+  apiKey: string,
+  body: string,
+  timeoutMs: number
+): Promise<{ ok: true; text: string } | { ok: false; error: Error }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const start = Date.now();
+
+  try {
+    const response = await fetch(apiUrlFor(model), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    console.log(`[gemini:${model}] responded in ${Date.now() - start}ms with status ${response.status}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { ok: false, error: new Error(`(${response.status}): ${errorText}`) };
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return { ok: false, error: new Error("returned no text content") };
+    return { ok: true, text };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const elapsed = Date.now() - start;
+    const error =
+      err instanceof Error && err.name === "AbortError"
+        ? new Error(`timed out after ${elapsed}ms`)
+        : new Error(`fetch failed after ${elapsed}ms: ${err}`);
+    console.log(`[gemini:${model}] ${error.message}`);
+    return { ok: false, error };
+  }
+}
+
+/**
+ * Tries the primary model twice (covers a single transient overload/hang),
+ * then falls back to a different model entirely. A same-model retry doesn't
+ * help much if the model itself is having a sustained bad moment — a
+ * different model has independent capacity, so it's a real second chance
+ * rather than just hoping the same problem clears up.
+ */
 export async function sendMessageToGemini({
   systemPrompt,
   history,
@@ -29,13 +75,12 @@ export async function sendMessageToGemini({
     throw new Error("Missing GEMINI_API_KEY");
   }
 
-  // Gemini has no separate "assistant" role name — it uses "model" instead.
   const contents = [
     ...history.map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
+      role: m.role === "assistant" ? ("model" as const) : ("user" as const),
       parts: [{ text: m.content }],
     })),
-    { role: "user", parts: [{ text: newMessage }] },
+    { role: "user" as const, parts: [{ text: newMessage }] },
   ];
 
   const body = JSON.stringify({
@@ -44,59 +89,23 @@ export async function sendMessageToGemini({
     generationConfig: { maxOutputTokens: 500 },
   });
 
-  // Gemini's free tier occasionally returns 503 "high demand" errors that
-  // clear up within seconds. A couple of quick retries smooths over most
-  // of these transient blips without the user ever seeing an error.
-  const MAX_ATTEMPTS = 3;
-  const PER_ATTEMPT_TIMEOUT_MS = 20_000;
-  let lastError: Error | null = null;
+  const attempts: { model: string; timeoutMs: number }[] = [
+    { model: PRIMARY_MODEL, timeoutMs: 15_000 },
+    { model: PRIMARY_MODEL, timeoutMs: 15_000 },
+    { model: FALLBACK_MODEL, timeoutMs: 15_000 },
+  ];
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), PER_ATTEMPT_TIMEOUT_MS);
-    const attemptStart = Date.now();
+  let lastError: Error = new Error("Unknown Gemini failure");
 
-    let response: Response;
-    try {
-      response = await fetch(GEMINI_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body,
-        signal: controller.signal,
-      });
-    } catch (err) {
-      clearTimeout(timeoutId);
-      const elapsed = Date.now() - attemptStart;
-      lastError =
-        err instanceof Error && err.name === "AbortError"
-          ? new Error(`Gemini request timed out after ${elapsed}ms (attempt ${attempt})`)
-          : new Error(`Gemini fetch failed after ${elapsed}ms: ${err}`);
-      console.log(`[gemini] Attempt ${attempt} failed: ${lastError.message}`);
-      if (attempt === MAX_ATTEMPTS) break;
-      await sleep(attempt * 1000);
-      continue;
-    }
-    clearTimeout(timeoutId);
-    console.log(`[gemini] Attempt ${attempt} responded in ${Date.now() - attemptStart}ms with status ${response.status}`);
+  for (let i = 0; i < attempts.length; i++) {
+    const { model, timeoutMs } = attempts[i];
+    const result = await callGemini(model, apiKey, body, timeoutMs);
 
-    if (response.ok) {
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error("Gemini API returned no text content");
-      return text as string;
-    }
+    if (result.ok) return result.text;
 
-    const errorText = await response.text();
-    lastError = new Error(`Gemini API error (${response.status}): ${errorText}`);
-
-    const isRetryable = response.status === 503 || response.status === 429;
-    if (!isRetryable || attempt === MAX_ATTEMPTS) break;
-
-    await sleep(attempt * 1000); // 1s, then 2s
+    lastError = result.error;
+    if (i < attempts.length - 1) await sleep(1000);
   }
 
-  throw lastError;
+  throw new Error(`Gemini API error after all attempts: ${lastError.message}`);
 }
