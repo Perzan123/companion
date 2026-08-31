@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import clsx from "clsx";
 import type { ChatMessage } from "@/lib/types/memory";
 import { renderInlineMarkdown } from "@/lib/utils/renderInlineMarkdown";
@@ -6,7 +7,12 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
 
   return (
-    <div className={clsx("flex", isUser ? "justify-end" : "justify-start")}>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className={clsx("flex", isUser ? "justify-end" : "justify-start")}
+    >
       <div
         className={clsx(
           "max-w-[80%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed",
@@ -17,6 +23,6 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
       >
         {renderInlineMarkdown(message.content)}
       </div>
-    </div>
+    </motion.div>
   );
 }
